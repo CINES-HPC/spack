@@ -23,7 +23,12 @@ class Namd(MakefilePackage, CudaPackage, ROCmPackage):
     maintainers("jcphill")
 
     version("master", branch="master")
-    version("3.0", sha256="301c64f0f1db860f7336efdb26223ccf66b5ab42bfc9141df8d81ec1e20bf472")
+    version("3.0.1", sha256="dcfd0f1ba7cb74c65a9743598d7b4ed71d12315ca8c470f88a90eb3286a47772")
+    version(
+        "3.0",
+        sha256="301c64f0f1db860f7336efdb26223ccf66b5ab42bfc9141df8d81ec1e20bf472",
+        deprecated=True,
+    )
     version(
         "3.0b7",
         sha256="b18ff43b0f55ec59e137c62eba1812589dd88b2122c3a05ea652781667f438b4",
@@ -305,8 +310,18 @@ class Namd(MakefilePackage, CudaPackage, ROCmPackage):
 
         if "+rocm" in spec:
             self._copy_arch_file("hip")
+            # Enable cross-compilation
+            filter_file(
+                r"HIPCCOPTS \+= -march=native",
+                r"HIPCCOPTS += ",
+                join_path("arch", self.arch + ".hip"),
+            )
             opts.append("--with-hip")
             opts.extend(["--rocm-prefix", os.environ["ROCM_PATH"]])
+
+            # Fix hip compilation
+            if spec.satisfies("@3.0.1"):
+                filter_file(r"__syncwarp", r"__syncthreads", "src/SequencerCUDAKernel.cu")
 
             if "+single_node_gpu" in spec:
                 opts.extend(["--with-single-node-hip"])
